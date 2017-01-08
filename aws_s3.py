@@ -1,5 +1,6 @@
 import boto
 from boto.s3.key import Key
+from boto.s3.deletemarker import DeleteMarker
 
 import os
 import time
@@ -98,6 +99,25 @@ def sync_bucket_to_folder(bucket_name, root_folder):
         if not os.path.isfile(local_location) or not k.etag == get_md5_hexdigest_of_file(local_location):
             download_file(k, root_folder)
 
+def delete_file_from_bucket(bucket_name, file_path):
+    bucket = get_bucket(bucket_name)
+    k = bucket.get_key(file_path)
+    if k:
+        bucket.delete_key(file_path)
+        logger.info('Deleted file {}'.format(k.name))
+    else:
+        logger.error('File {} not found on bucket to be deleted'.format(k.name))
+
+def restore_file_from_bucket(bucket_name, file_path):
+    bucket = get_bucket(bucket_name)
+    versions = filter(lambda v: isinstance(v, DeleteMarker) and v.is_latest, bucket.get_all_versions(prefix=file_path))
+    if versions:
+        for v in versions:
+            bucket.delete_key(v.name, version_id=v.version_id)
+        logger.info('File {} restored in bucket'.format(v.name))
+    else:
+        logger.error('File {} not found or may already exist in bucket therefore cannot be restored'.format(file_path))
+
 def run_function(option, opt_str, value, parser):
     global logger
     logger= logging.getLogger('s3.{}'.format(option.dest))
@@ -123,6 +143,26 @@ if __name__ == "__main__":
         nargs=2,
         metavar='<bucket name> <root folder>',
         help="Sync bucket in AWS with folder",
+        callback= run_function,
+        action='callback',
+        type='str'
+    )
+    parser.add_option(
+        '-d',
+        dest="delete_file_from_bucket",
+        nargs=2,
+        metavar='<bucket name> <file path>',
+        help="Delete a file in a bucket",
+        callback= run_function,
+        action='callback',
+        type='str'
+    )
+    parser.add_option(
+        '-r',
+        dest="restore_file_from_bucket",
+        nargs=2,
+        metavar='<bucket name> <file path>',
+        help="Restore latest version of file in a bucket",
         callback= run_function,
         action='callback',
         type='str'
