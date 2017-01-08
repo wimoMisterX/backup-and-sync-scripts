@@ -11,3 +11,5 @@
 3. Run the commands by:
     * Sync folder to bucket - `make aws ARGS="-f <bucket name> <root folder>"`
     * Sync bucket to folder - `make aws ARGS="-b <bucket name> <root folder>"`
+    * Delete file in bucket - `make aws ARGS="-d <bucket name> <file path>"`
+    * Restore file in bucket - `make aws ARGS="-r <bucket name> <file path>"`
